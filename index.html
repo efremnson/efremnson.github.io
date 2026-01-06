@@ -1,10 +1,211 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>My GitHub Page</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Volleyball 5-1 Rotation Emulator</title>
+    <style>
+        :root {
+            --court-color: #f39c12;
+            --border-color: #ffffff;
+            --player-size: 45px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #2c3e50;
+            color: white;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 10px 15px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background: #34495e;
+            color: white;
+            transition: 0.3s;
+        }
+
+        button.active {
+            background: #e67e22;
+            font-weight: bold;
+        }
+
+        .court-container {
+            position: relative;
+            width: 400px;
+            height: 500px;
+            background-color: var(--court-color);
+            border: 5px solid var(--border-color);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        /* 10ft / 3m line */
+        .attack-line {
+            position: absolute;
+            top: 33.3%;
+            width: 100%;
+            height: 4px;
+            background-color: var(--border-color);
+        }
+
+        .player {
+            position: absolute;
+            width: var(--player-size);
+            height: var(--player-size);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            transform: translate(-50%, -50%);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+
+        .S { background: #e74c3c; }   /* Setter */
+        .OH { background: #3498db; }  /* Outside */
+        .MB { background: #2ecc71; }  /* Middle */
+        .OPP { background: #9b59b6; } /* Opposite */
+
+        .labels {
+            margin-top: 15px;
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
-    <h1>Hello, world!</h1>
-    <p>Welcome to my simple website hosted on GitHub Pages.</p>
+
+    <h2>5-1 Rotation Emulator</h2>
+
+    <div class="controls">
+        <button onclick="setRotation(1)" id="rot1"> Rotation 1</button>
+        <button onclick="setRotation(6)" id="rot6"> Rotation 2</button>
+        <button onclick="setRotation(5)" id="rot5"> Rotation 3</button>
+        <button onclick="setRotation(4)" id="rot4"> Rotation 4</button>
+        <button onclick="setRotation(3)" id="rot3"> Rotation 5</button>
+        <button onclick="setRotation(2)" id="rot2"> Rotation 6</button>
+    </div>
+
+    <div class="controls">
+        <button onclick="setState('base')" id="stateBase">Base</button>
+        <button onclick="setState('receive')" id="stateReceive">Pass</button>
+        <button onclick="setState('attack')" id="stateAttack">Set/Attack</button>
+    </div>
+
+    <div class="court-container" id="court">
+        <div class="attack-line"></div>
+        </div>
+
+    <div class="labels">
+        <p id="infoText">Rotation 1: Setter in Position 1 (Back Right)</p>
+    </div>
+
+    <script>
+        let currentRotation = 1;
+        let currentState = 'base';
+
+        // Positions are percentages (Left, Top)
+        // Back row: 1 (BR), 6 (BC), 5 (BL) | Front row: 2 (FR), 3 (FC), 4 (FL)
+        const players = [
+            { id: 'S', role: 'S', label: 'S' },
+            { id: 'OH1', role: 'OH', label: 'OH1' },
+            { id: 'MB1', role: 'MB', label: 'MB1' },
+            { id: 'OPP', role: 'OPP', label: 'OPP' },
+            { id: 'OH2', role: 'OH', label: 'OH2' },
+            { id: 'MB2', role: 'MB', label: 'MB2' }
+        ];
+
+        const rotationData = {
+            1: { // Setter in P1
+                base: { S: [80, 80], OH1: [80, 20], MB1: [50, 80], OPP: [20, 20], OH2: [20, 80], MB2: [50, 20] },
+                receive: { S: [90, 90], OH1: [20, 75], MB1: [80, 80], OPP: [15, 15], OH2: [50, 80], MB2: [17, 20] },
+                attack: { S: [70, 15], OH1: [0, 30], MB1: [15, 80], OPP: [100, 30], OH2: [50, 80], MB2: [50, 30] }
+            },
+            6: { // Setter in P6
+                base: { S: [50, 80], OH1: [80, 80], MB2: [80, 20], OPP: [50, 20], OH2: [20, 20], MB1: [20, 80] },
+                receive: { S: [50, 20], OH1: [80, 80], MB2: [55, 15], OPP: [50, 10], OH2: [20, 75], MB1: [50, 80] },
+                attack: { S: [70, 15], OH1: [50, 80], MB2: [50, 30], OPP: [100, 30], OH2: [0, 30], MB1: [15, 80] }
+            },
+            5: { // Setter in P5
+                base: { S: [20, 80], OH1: [50, 80], MB2: [80, 80], OPP: [80, 20], OH2: [50, 20], MB1: [20, 20] },
+                receive: { S: [35, 25], OH1: [50, 80], MB2: [85, 80], OPP: [90, 15], OH2: [20, 75], MB1: [10, 15] },
+                attack: { S: [70, 15], OH1: [50, 80], MB2: [20, 80], OPP: [100, 30], OH2: [0, 30], MB1: [50, 30] }
+            },
+            4: { // Setter in P4
+                base: { S: [20, 20], OH1: [20, 80], MB2: [50, 80], OPP: [80, 80], OH2: [80, 20], MB1: [50, 20] },
+                receive: { S: [5, 5], OH1: [50, 80], MB2: [80, 80], OPP: [90, 90], OH2: [20, 75], MB1: [12, 15] },
+                attack: { S: [70, 15], OH1: [50, 80], MB2: [20, 80], OPP: [100, 80], OH2: [0, 30], MB1: [50, 30] }
+            },
+            3: { // Setter in P3
+                base: { S: [50, 20], OH1: [20, 20], MB2: [20, 80], OPP: [50, 80], OH2: [80, 80], MB1: [80, 20] },
+                receive: { S: [65, 15], OH1: [15, 75], MB2: [50, 80], OPP: [70, 90], OH2: [80, 80], MB1: [70, 15] },
+                attack: { S: [70, 15], OH1: [15, 30], MB2: [20, 80], OPP: [100, 80], OH2: [50, 80], MB1: [50, 30] }
+            },
+            2: { // Setter in P2
+                base: { S: [80, 20], OH1: [50, 20], MB2: [20, 20], OPP: [20, 80], OH2: [50, 80], MB1: [80, 80] },
+                receive: { S: [80, 15], OH1: [20, 75], MB2: [15, 15], OPP: [30, 90], OH2: [50, 80], MB1: [80, 80] },
+                attack: { S: [70, 15], OH1: [0, 30], MB2: [50, 30], OPP: [100, 80], OH2: [50, 80], MB1: [20, 80] }
+            }
+        };
+
+        function init() {
+            const court = document.getElementById('court');
+            players.forEach(p => {
+                const el = document.createElement('div');
+                el.id = p.id;
+                el.className = `player ${p.role}`;
+                el.innerText = p.label;
+                court.appendChild(el);
+            });
+            updatePositions();
+        }
+
+        function setRotation(rot) {
+            currentRotation = rot;
+            document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+            document.getElementById('rot' + rot).classList.add('active');
+            document.getElementById('state' + currentState.charAt(0).toUpperCase() + currentState.slice(1)).classList.add('active');
+            document.getElementById('infoText').innerText = `Setter in Position ${rot}`;
+            updatePositions();
+        }
+
+        function setState(state) {
+            currentState = state;
+            document.querySelectorAll('[id^="state"]').forEach(b => b.classList.remove('active'));
+            document.getElementById('state' + state.charAt(0).toUpperCase() + state.slice(1)).classList.add('active');
+            updatePositions();
+        }
+
+        function updatePositions() {
+            const data = rotationData[currentRotation][currentState];
+            players.forEach(p => {
+                const el = document.getElementById(p.id);
+                const pos = data[p.id];
+                el.style.left = pos[0] + '%';
+                el.style.top = pos[1] + '%';
+            });
+        }
+
+        init();
+        setRotation(1);
+        setState('base');
+    </script>
 </body>
 </html>
